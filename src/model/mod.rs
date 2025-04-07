@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::Queryable;
+use diesel::Insertable;
 use crate::schema::users;
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
