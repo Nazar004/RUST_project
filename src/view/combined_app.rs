@@ -10,25 +10,25 @@ use crate::model::AuthData;
 use crate::controller::login_controller::attempt_login;
 use crate::controller::registration_controller::attempt_register;
 
-// Объявляем тип пула соединений
+// Declare the connection pool type
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    // Сообщения для экрана входа
+    // Messages for the login screen
     LoginUsernameChanged(String),
     LoginPasswordChanged(String),
     LoginPressed,
     LoginResult(Result<(), String>),
 
-    // Сообщения для экрана регистрации
+    // Messages for the registration screen
     RegUsernameChanged(String),
     RegPasswordChanged(String),
     RegConfirmChanged(String),
     RegisterPressed,
     RegisterResult(Result<(), String>),
 
-    // Переключение между экранами
+    // Switching between screens
     SwitchToRegistration,
     SwitchToLogin,
 }
@@ -41,11 +41,11 @@ pub enum Screen {
 
 pub struct CombinedApp {
     pub current_screen: Screen,
-    // Поля для входа
+    // Entry fields
     pub login_username: String,
     pub login_password: String,
     pub login_message: String,
-    // Поля для регистрации
+    // Fields for registration
     pub reg_username: String,
     pub reg_password: String,
     pub reg_confirm: String,
@@ -73,11 +73,11 @@ impl Application for CombinedApp {
                 current_screen: Screen::Login,
                 login_username: String::new(),
                 login_password: String::new(),
-                login_message: "Введите данные для входа".into(),
+                login_message: "Enter your login details".into(),
                 reg_username: String::new(),
                 reg_password: String::new(),
                 reg_confirm: String::new(),
-                reg_message: "Введите данные для регистрации".into(),
+                reg_message: "Enter your registration details".into(),
                 pool,
             },
             Command::none(),
@@ -86,14 +86,14 @@ impl Application for CombinedApp {
 
     fn title(&self) -> String {
         match self.current_screen {
-            Screen::Login => "Вход в систему".into(),
-            Screen::Registration => "Регистрация".into(),
+            Screen::Login => "Login".into(),
+            Screen::Registration => "Register".into(),
         }
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            // Обработка сообщений для входа
+            // Processing login messages
             Message::LoginUsernameChanged(val) => self.login_username = val,
             Message::LoginPasswordChanged(val) => self.login_password = val,
             Message::LoginPressed => {
@@ -107,17 +107,17 @@ impl Application for CombinedApp {
             }
             Message::LoginResult(result) => {
                 self.login_message = match result {
-                    Ok(_) => "Успешный вход!".into(),
-                    Err(err) => format!("Ошибка: {}", err),
+                    Ok(_) => "Successful entry!".into(),
+                    Err(err) => format!("Error: {}", err),
                 };
             }
-            // Обработка сообщений для регистрации
+            // Processing messages for registration
             Message::RegUsernameChanged(val) => self.reg_username = val,
             Message::RegPasswordChanged(val) => self.reg_password = val,
             Message::RegConfirmChanged(val) => self.reg_confirm = val,
             Message::RegisterPressed => {
                 if self.reg_password != self.reg_confirm {
-                    self.reg_message = "Пароли не совпадают".into();
+                    self.reg_message = "Passwords do not match".into();
                 } else {
                     let username = self.reg_username.clone();
                     let password = self.reg_password.clone();
@@ -130,11 +130,11 @@ impl Application for CombinedApp {
             }
             Message::RegisterResult(result) => {
                 self.reg_message = match result {
-                    Ok(_) => "Регистрация успешна!".into(),
-                    Err(err) => format!("Ошибка: {}", err),
+                    Ok(_) => "Registration successful!".into(),
+                    Err(err) => format!("Chyba: {}", err),
                 };
             }
-            // Переключение экранов
+            // Switching screens
             Message::SwitchToRegistration => self.current_screen = Screen::Registration,
             Message::SwitchToLogin => self.current_screen = Screen::Login,
         }
@@ -142,7 +142,7 @@ impl Application for CombinedApp {
     }
 
     fn view(&self) -> Element<Message> {
-        // Здесь мы делегируем отрисовку соответствующему модулю:
+        // Here we delegate rendering to the appropriate module:
         match self.current_screen {
             Screen::Login => crate::view::login_view::view(self),
             Screen::Registration => crate::view::registration_view::view(self),

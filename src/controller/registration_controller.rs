@@ -10,7 +10,7 @@ pub fn attempt_register(
 ) -> Result<(), String> {
     let mut conn = pool.get().map_err(|e| format!("DB connection error: {:?}", e))?;
     let hashed = hash(&auth_data.password, DEFAULT_COST)
-        .map_err(|e| format!("Ошибка хеширования: {:?}", e))?;
+        .map_err(|e| format!("Password error: {:?}", e))?;
     let new_user = NewUser {
         username: auth_data.username.clone(),
         password: hashed,
@@ -18,6 +18,6 @@ pub fn attempt_register(
     diesel::insert_into(crate::schema::users::table)
         .values(new_user)
         .execute(&mut conn)
-        .map_err(|e| format!("Ошибка при регистрации: {:?}", e))?;
+        .map_err(|e| format!("Registration error: {:?}", e))?;
     Ok(())
 }
