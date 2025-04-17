@@ -5,11 +5,23 @@ use iced::{
 };
 use diesel::r2d2::{Pool, ConnectionManager};
 use diesel::PgConnection;
+use diesel::prelude::*;
+use diesel::insert_into;
+use crate::schema::transactions::dsl::{
+    transactions,
+    tran_type,
+    user_id as user_id_col,
+    tran_source,
+    date,
+    tran_amount,
+};
 use dotenv::dotenv;
 use std::env;
 
 use crate::controller::login_controller::attempt_login;
-use crate::controller::registration_controller::attempt_register;use crate::model::AuthData;
+use crate::controller::registration_controller::attempt_register;
+use crate::controller::transaction_controller::{delete_transaction, load_transactions};
+use crate::model::AuthData;
 
 /// Alias для пула соединений
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
@@ -78,11 +90,11 @@ pub struct CombinedApp {
     pub reg_message: String,
     // Поля для дашборда
     pub user_name: Option<String>,
-    // Поля для формы добавления расходов
+    // Форма расходов
     pub store_name: String,
     pub expense_date: String,
     pub expense_sum: String,
-    // Поля для формы добавления прибыли
+    // Форма прибыли
     pub income_source: String,
     pub income_date: String,
     pub income_sum: String,
@@ -225,22 +237,63 @@ impl Application for CombinedApp {
             Message::ChangeExpenseDate(val) => self.expense_date = val,
             Message::ChangeExpenseSum(val) => self.expense_sum = val,
             Message::ConfirmAddExpense => {
+                let uid = self.user_id.expect("User ID not set");
+                let store = self.store_name.clone();
+                let date_str = self.expense_date.clone();
+                let amount_str = self.expense_sum.clone();
+
+                let amount: f64 = amount_str.parse()
+                    .expect("Invalid amount format");
+
+                let mut conn = self.pool.get().expect("Failed to get DB connection");
+                insert_into(transactions)
+                    .values((
+                        tran_type.eq("Expense"),
+                        user_id_col.eq(uid),
+                        tran_source.eq(store.clone()),
+                        date.eq(date_str.clone()),
+                        tran_amount.eq(amount),
+                    ))
+                    .execute(&mut conn)
+                    .expect("DB insert error");
+
                 self.dashboard_message = format!(
-                    "Expense added:\nStore: {}, Date: {}, Amount: {}",
-                    self.store_name, self.expense_date, self.expense_sum
+                    "Expense added: Store: {}, Date: {}, Amount: {}",
+                    store, date_str, amount_str
                 );
                 self.store_name.clear();
                 self.expense_date.clear();
                 self.expense_sum.clear();
                 self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard);
             }
+            
             Message::ChangeSource(val) => self.income_source = val,
             Message::ChangeIncomeDate(val) => self.income_date = val,
             Message::ChangeIncomeSum(val) => self.income_sum = val,
             Message::ConfirmAddIncome => {
+                let uid = self.user_id.expect("User ID not set");
+                let source = self.income_source.clone();
+                let date_str = self.income_date.clone();
+                let amount_str = self.income_sum.clone();
+
+                let amount: f64 = amount_str.parse()
+                    .expect("Invalid amount format");
+
+                let mut conn = self.pool.get().expect("Failed to get DB connection");
+                insert_into(transactions)
+                    .values((
+                        tran_type.eq("Income"),
+                        user_id_col.eq(uid),
+                        tran_source.eq(source.clone()),
+                        date.eq(date_str.clone()),
+                        tran_amount.eq(amount),
+                    ))
+                    .execute(&mut conn)
+                    .expect("DB insert error");
+
                 self.dashboard_message = format!(
-                    "Income added:\nSource: {}, Date: {}, Amount: {}",
-                    self.income_source, self.income_date, self.income_sum
+                    "Income added: Source: {}, Date: {}, Amount: {}",
+                    source, date_str, amount_str
                 );
                 self.income_source.clear();
                 self.income_date.clear();
@@ -395,5 +448,6 @@ impl Application for CombinedApp {
                 }
             }
         }
+        
     }
 }
