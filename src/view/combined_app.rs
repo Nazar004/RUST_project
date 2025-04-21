@@ -1,29 +1,18 @@
 use iced::{
-    executor, Application, Command, Element, Theme,
-    widget::{Button, Column, Row, Space, Text, TextInput},
+    executor, Application, Command, Element, Theme, Color, theme,
+    widget::{Button, Column, Row, Space, Text as IcedText, TextInput},
     Alignment, Length,
 };
 use diesel::r2d2::{Pool, ConnectionManager};
 use diesel::PgConnection;
-use diesel::prelude::*;
-use diesel::insert_into;
-use crate::schema::transactions::dsl::{
-    transactions,
-    tran_type,
-    user_id as user_id_col,
-    tran_source,
-    date,
-    tran_amount,
-};
 use dotenv::dotenv;
 use std::env;
 
 use crate::controller::login_controller::attempt_login;
 use crate::controller::registration_controller::attempt_register;
-use crate::controller::transaction_controller::{delete_transaction, load_transactions};
-use crate::model::AuthData;
+use crate::controller::transaction_controller::{load_transactions, add_expense, add_income};
+use crate::model::{AuthData, Transaction};
 
-/// Alias для пула соединений
 pub type DbPool = Pool<ConnectionManager<PgConnection>>;
 
 #[derive(Debug, Clone)]
@@ -43,73 +32,60 @@ pub enum Screen {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    // Экран входа
     LoginUsernameChanged(String),
     LoginPasswordChanged(String),
     LoginPressed,
     LoginResult(Result<i32, String>),
-    SwitchToRegistration,
-    // Экран регистрации
+    TransactionsLoaded(Vec<Transaction>),
     RegUsernameChanged(String),
     RegPasswordChanged(String),
     RegConfirmChanged(String),
     RegisterPressed,
     RegisterResult(Result<(), String>),
     SwitchToLogin,
-    // Дашборд – для выбора добавления записи
+    SwitchToRegistration,
     ShowAddOption,
     ChooseAddExpense,
     ChooseAddIncome,
-    // Форма расходов
+    CancelDashboardAction,
     ChangeStoreName(String),
     ChangeExpenseDate(String),
     ChangeExpenseSum(String),
     ConfirmAddExpense,
-    // Форма прибыли
-    ChangeSource(String),
+    ChangeIncomeSource(String),
     ChangeIncomeDate(String),
     ChangeIncomeSum(String),
     ConfirmAddIncome,
-    // Возврат к базовому режиму дашборда
-    CancelDashboardAction,
-    // Настройки (placeholder)
     SettingsPressed,
 }
 
 pub struct CombinedApp {
-    pub current_screen: Screen,
-    // Поля для экрана входа
-    pub login_username: String,
-    pub login_password: String,
-    pub login_message: String,
-    // Поля для экрана регистрации
-    pub reg_username: String,
-    pub user_id: Option<i32>,
-    pub reg_password: String,
-    pub reg_confirm: String,
-    pub reg_message: String,
-    // Поля для дашборда
-    pub user_name: Option<String>,
-    // Форма расходов
-    pub store_name: String,
-    pub expense_date: String,
-    pub expense_sum: String,
-    // Форма прибыли
-    pub income_source: String,
-    pub income_date: String,
-    pub income_sum: String,
-    pub dashboard_message: String,
-    pub pool: DbPool,
+  pub  current_screen: Screen,
+  pub  login_username: String,
+  pub  login_password: String,
+  pub  login_message: String,
+  pub  reg_username: String,
+  pub  reg_password: String,
+  pub  reg_confirm: String,
+  pub  reg_message: String,
+  pub  user_name: Option<String>,
+  pub  user_id: Option<i32>,
+  pub  transactions: Vec<Transaction>,
+  pub store_name: String,
+    pub  expense_date: String,
+    pub  expense_sum: String,
+    pub  income_source: String,
+    pub  income_date: String,
+    pub  income_sum: String,
+    pub  dashboard_message: String,
+    pub  pool: DbPool,
 }
 
 impl CombinedApp {
     fn new_pool() -> DbPool {
-        let database_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL is not set.");
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL not set");
         let manager = ConnectionManager::<PgConnection>::new(database_url);
-        Pool::builder()
-            .build(manager)
-            .expect("Failed to create connection pool")
+        Pool::builder().build(manager).expect("Failed to create pool")
     }
 }
 
@@ -125,15 +101,20 @@ impl Default for CombinedApp {
             reg_password: String::new(),
             reg_confirm: String::new(),
             reg_message: "Enter your registration details".into(),
+
+
             user_name: None,
             user_id: None,
+
+            dashboard_message: "Your transaction history".into(),
+            transactions: Vec::new(),
             store_name: String::new(),
             expense_date: String::new(),
             expense_sum: String::new(),
             income_source: String::new(),
             income_date: String::new(),
             income_sum: String::new(),
-            dashboard_message: "Dashboard records will appear here".into(),
+
             pool: CombinedApp::new_pool(),
         }
     }
@@ -144,11 +125,11 @@ impl Application for CombinedApp {
     type Message = Message;
     type Flags = ();
     type Theme = Theme;
-    
+
     fn new(_flags: ()) -> (Self, Command<Message>) {
         (CombinedApp::default(), Command::none())
     }
-    
+
     fn title(&self) -> String {
         match self.current_screen {
             Screen::Login => "Login".into(),
@@ -156,298 +137,218 @@ impl Application for CombinedApp {
             Screen::Dashboard(_) => "Dashboard".into(),
         }
     }
-    
+
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            // Processing login messages
-            Message::LoginUsernameChanged(val) => self.login_username = val,
-            Message::LoginPasswordChanged(val) => self.login_password = val,
+            Message::LoginUsernameChanged(v) => self.login_username = v,
+            Message::LoginPasswordChanged(v) => self.login_password = v,
             Message::LoginPressed => {
-                let username = self.login_username.clone();
-                let password = self.login_password.clone();
+                let user = self.login_username.clone();
+                let pass = self.login_password.clone();
                 let pool = self.pool.clone();
                 return Command::perform(
-                    async move { attempt_login(&pool, &AuthData { username, password }) },
+                    async move { attempt_login(&pool, &AuthData { username: user, password: pass }) },
                     Message::LoginResult,
                 );
             }
-            Message::LoginResult(result) => {
-                match result {
-                        Ok(id) => {
-                            self.login_message = "Successful login".into();
-                            self.user_name = Some(self.login_username.clone());
-                            self.user_id = Some(id);
-                            self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard);}
-                    Err(e) => {
-                        self.login_message = format!("Error: {}", e);
-                    }
-                }
+            Message::LoginResult(Ok(id)) => {
+                self.user_name = Some(self.login_username.clone());
+                self.user_id = Some(id);
+                let pool = self.pool.clone();
+                return Command::perform(
+                    async move { load_transactions(id).unwrap_or_default() },
+                    Message::TransactionsLoaded,
+                );
             }
-            Message::SwitchToRegistration => {
-                self.current_screen = Screen::Registration;
-                self.login_message.clear();
+            Message::LoginResult(Err(e)) => self.login_message = e,
+
+            Message::TransactionsLoaded(txs) => {
+                self.transactions = txs;
+                self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard);
             }
-            // --- Обработка экрана регистрации ---
-            Message::RegUsernameChanged(val) => self.reg_username = val,
-            Message::RegPasswordChanged(val) => self.reg_password = val,
-            Message::RegConfirmChanged(val) => self.reg_confirm = val,
+
+            Message::RegUsernameChanged(v) => self.reg_username = v,
+            Message::RegPasswordChanged(v) => self.reg_password = v,
+            Message::RegConfirmChanged(v) => self.reg_confirm = v,
             Message::RegisterPressed => {
                 if self.reg_password != self.reg_confirm {
                     self.reg_message = "Passwords do not match".into();
                 } else {
-                    let username = self.reg_username.clone();
-                    let password = self.reg_password.clone();
+                    let user = self.reg_username.clone();
+                    let pass = self.reg_password.clone();
                     let pool = self.pool.clone();
                     return Command::perform(
-                        async move { attempt_register(&pool, &AuthData { username, password }) },
+                        async move { attempt_register(&pool, &AuthData { username: user, password: pass }) },
                         Message::RegisterResult,
                     );
                 }
             }
-            Message::RegisterResult(result) => {
-                match result {
-                    Ok(_) => {
-                        self.reg_message = "Registration successful!".into();
-                        self.current_screen = Screen::Login;
-                        self.login_username = self.reg_username.clone();
-                        self.reg_username.clear();
-                        self.reg_password.clear();
-                        self.reg_confirm.clear();
-                    }
-                    Err(e) => {
-                        self.reg_message = format!("Error: {}", e);
-                    }
-                }
-            }
-            Message::SwitchToLogin => {
-                self.current_screen = Screen::Login;
-                self.reg_message.clear();
-            }
-            // --- Обработка Dashboard ---
-            Message::ShowAddOption => {
-                self.current_screen = Screen::Dashboard(DashboardViewMode::AddOption);
-            }
-            Message::ChooseAddExpense => {
-                self.current_screen = Screen::Dashboard(DashboardViewMode::AddExpense);
-            }
-            Message::ChooseAddIncome => {
-                self.current_screen = Screen::Dashboard(DashboardViewMode::AddIncome);
-            }
-            Message::ChangeStoreName(val) => self.store_name = val,
-            Message::ChangeExpenseDate(val) => self.expense_date = val,
-            Message::ChangeExpenseSum(val) => self.expense_sum = val,
+            Message::RegisterResult(Ok(())) => self.current_screen = Screen::Login,
+            Message::RegisterResult(Err(e)) => self.reg_message = e,
+
+            Message::SwitchToLogin => self.current_screen = Screen::Login,
+            Message::SwitchToRegistration => self.current_screen = Screen::Registration,
+
+            Message::ShowAddOption => self.current_screen = Screen::Dashboard(DashboardViewMode::AddOption),
+            Message::ChooseAddExpense => self.current_screen = Screen::Dashboard(DashboardViewMode::AddExpense),
+            Message::ChooseAddIncome => self.current_screen = Screen::Dashboard(DashboardViewMode::AddIncome),
+            Message::CancelDashboardAction => self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard),
+
+            Message::ChangeStoreName(v) => self.store_name = v,
+            Message::ChangeExpenseDate(v) => self.expense_date = v,
+            Message::ChangeExpenseSum(v) => self.expense_sum = v,
             Message::ConfirmAddExpense => {
-                let uid = self.user_id.expect("User ID not set");
-                let store = self.store_name.clone();
-                let date_str = self.expense_date.clone();
-                let amount_str = self.expense_sum.clone();
-
-                let amount: f64 = amount_str.parse()
-                    .expect("Invalid amount format");
-
-                let mut conn = self.pool.get().expect("Failed to get DB connection");
-                insert_into(transactions)
-                    .values((
-                        tran_type.eq("Expense"),
-                        user_id_col.eq(uid),
-                        tran_source.eq(store.clone()),
-                        date.eq(date_str.clone()),
-                        tran_amount.eq(amount),
-                    ))
-                    .execute(&mut conn)
-                    .expect("DB insert error");
-
-                self.dashboard_message = format!(
-                    "Expense added: Store: {}, Date: {}, Amount: {}",
-                    store, date_str, amount_str
-                );
-                self.store_name.clear();
-                self.expense_date.clear();
-                self.expense_sum.clear();
+                if let Some(uid) = self.user_id {
+                    let amt = self.expense_sum.parse().unwrap_or(0.0);
+                    let _ = add_expense(&self.pool, uid, &self.store_name, &self.expense_date, amt);
+                }
                 self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard);
             }
-            
-            Message::ChangeSource(val) => self.income_source = val,
-            Message::ChangeIncomeDate(val) => self.income_date = val,
-            Message::ChangeIncomeSum(val) => self.income_sum = val,
+            Message::ChangeIncomeSource(v) => self.income_source = v,
+            Message::ChangeIncomeDate(v) => self.income_date = v,
+            Message::ChangeIncomeSum(v) => self.income_sum = v,
             Message::ConfirmAddIncome => {
-                let uid = self.user_id.expect("User ID not set");
-                let source = self.income_source.clone();
-                let date_str = self.income_date.clone();
-                let amount_str = self.income_sum.clone();
-
-                let amount: f64 = amount_str.parse()
-                    .expect("Invalid amount format");
-
-                let mut conn = self.pool.get().expect("Failed to get DB connection");
-                insert_into(transactions)
-                    .values((
-                        tran_type.eq("Income"),
-                        user_id_col.eq(uid),
-                        tran_source.eq(source.clone()),
-                        date.eq(date_str.clone()),
-                        tran_amount.eq(amount),
-                    ))
-                    .execute(&mut conn)
-                    .expect("DB insert error");
-
-                self.dashboard_message = format!(
-                    "Income added: Source: {}, Date: {}, Amount: {}",
-                    source, date_str, amount_str
-                );
-                self.income_source.clear();
-                self.income_date.clear();
-                self.income_sum.clear();
+                if let Some(uid) = self.user_id {
+                    let amt = self.income_sum.parse().unwrap_or(0.0);
+                    let _ = add_income(&self.pool, uid, &self.income_source, &self.income_date, amt);
+                }
                 self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard);
             }
-            Message::CancelDashboardAction => {
-                self.current_screen = Screen::Dashboard(DashboardViewMode::Dashboard);
-                self.dashboard_message.clear();
-            }
-            Message::SettingsPressed => {
-                // Placeholder для настроек
-            }
+
+            Message::SettingsPressed => {},
         }
         Command::none()
     }
-    
+
     fn view(&self) -> Element<Message> {
         match &self.current_screen {
             Screen::Login => {
-                let username_input = TextInput::new("Username", &self.login_username)
-                    .on_input(Message::LoginUsernameChanged);
-                let password_input = TextInput::new("Password", &self.login_password)
-                    .on_input(Message::LoginPasswordChanged);
-                let login_button = Button::new(Text::new("Login"))
-                    .on_press(Message::LoginPressed);
-                let registration_button = Button::new(Text::new("Register"))
-                    .on_press(Message::SwitchToRegistration);
                 Column::new()
                     .padding(20)
                     .spacing(15)
                     .align_items(Alignment::Center)
-                    .push(Text::new("Login"))
-                    .push(username_input)
-                    .push(password_input)
-                    .push(login_button)
-                    .push(registration_button)
-                    .push(Text::new(&self.login_message))
+                    .push(IcedText::new("Login"))
+                    .push(TextInput::new("Username", &self.login_username)
+                        .on_input(Message::LoginUsernameChanged))
+                    .push(TextInput::new("Password", &self.login_password)
+                        .on_input(Message::LoginPasswordChanged))
+                    .push(Button::new(IcedText::new("Login")).on_press(Message::LoginPressed))
+                    .push(IcedText::new(&self.login_message))
+                    .push(Button::new(IcedText::new("Register")).on_press(Message::SwitchToRegistration))
                     .into()
             }
+
             Screen::Registration => {
-                let username_input = TextInput::new("Username", &self.reg_username)
-                    .on_input(Message::RegUsernameChanged);
-                let password_input = TextInput::new("Password", &self.reg_password)
-                    .on_input(Message::RegPasswordChanged);
-                let confirm_input = TextInput::new("Confirm Password", &self.reg_confirm)
-                    .on_input(Message::RegConfirmChanged);
-                let register_button = Button::new(Text::new("Register"))
-                    .on_press(Message::RegisterPressed);
-                let login_button = Button::new(Text::new("Login"))
-                    .on_press(Message::SwitchToLogin);
                 Column::new()
                     .padding(20)
                     .spacing(15)
                     .align_items(Alignment::Center)
-                    .push(Text::new("Register"))
-                    .push(username_input)
-                    .push(password_input)
-                    .push(confirm_input)
-                    .push(register_button)
-                    .push(login_button)
-                    .push(Text::new(&self.reg_message))
+                    .push(IcedText::new("Register"))
+                    .push(TextInput::new("Username", &self.reg_username)
+                        .on_input(Message::RegUsernameChanged))
+                    .push(TextInput::new("Password", &self.reg_password)
+                        .on_input(Message::RegPasswordChanged))
+                    .push(TextInput::new("Confirm", &self.reg_confirm)
+                        .on_input(Message::RegConfirmChanged))
+                    .push(Button::new(IcedText::new("Register")).on_press(Message::RegisterPressed))
+                    .push(IcedText::new(&self.reg_message))
+                    .push(Button::new(IcedText::new("Login")).on_press(Message::SwitchToLogin))
                     .into()
             }
+
             Screen::Dashboard(mode) => {
                 match mode {
                     DashboardViewMode::Dashboard => {
-                        // Верхняя панель: имя пользователя слева, настройки справа
+                        // Верхняя панель
                         let top_bar = Row::new()
                             .padding(10)
                             .align_items(Alignment::Center)
-                            .push(Text::new(match &self.user_name {
+                            .push(IcedText::new(match &self.user_name {
                                 Some(name) => name,
                                 None => "",
                             }))
                             .push(Space::with_width(Length::Fill))
-                            .push(Button::new(Text::new("Settings"))
-                                .on_press(Message::SettingsPressed));
+                            .push(Button::new(IcedText::new("Settings")).on_press(Message::SettingsPressed));
                         
-                        // Основной контент: список записей (placeholder) и кнопка "Add Record"
-                        let records_area = Column::new()
-                            .padding(20)
-                            .spacing(10)
-                            .align_items(Alignment::Center)
-                            .push(Text::new("Record list (placeholder)"))
-                            .push(Button::new(Text::new("Add Record"))
-                                .on_press(Message::ShowAddOption));
-                        
+                        // Список транзакций цветной
+                        let mut records = Column::new().padding(20).spacing(10);
+                        for tx in &self.transactions {
+                            let color = if tx.tran_type == "Expense" {
+                                Color::from_rgb(1.0, 0.0, 0.0)
+                            } else {
+                                Color::from_rgb(0.0, 1.0, 0.0)
+                            };
+                            records = records.push(
+                                Row::new().spacing(15)
+                                    .push(IcedText::new(&tx.tran_type).style(theme::Text::Color(color)))
+                                    .push(IcedText::new(&tx.tran_source))
+                                    .push(IcedText::new(&tx.date))
+                                    .push(IcedText::new(format!("{:.2}", tx.tran_amount)))
+                            );
+                        }
+
+                        // Кнопки добавить
+                        let records_area = records;
+
                         Column::new()
                             .push(top_bar)
+                            .push(IcedText::new(&self.dashboard_message))
+                            .push(Space::with_height(Length::Fixed(20.0)))
+                            .spacing(20)
+                            //Сделать отступы для кнопок и текста
+
+                            .push(Button::new(IcedText::new("Add Expense")).on_press(Message::ChooseAddExpense))
+                            .push(Button::new(IcedText::new("Add Income")).on_press(Message::ChooseAddIncome))
                             .push(records_area)
-                            .push(Text::new(&self.dashboard_message))
                             .into()
                     }
                     DashboardViewMode::AddOption => {
-                        // Выбор между добавлением расходов и прибылей
-                        let expense_button = Button::new(Text::new("Add Expense"))
-                            .on_press(Message::ChooseAddExpense);
-                        let income_button = Button::new(Text::new("Add Income"))
-                            .on_press(Message::ChooseAddIncome);
                         Column::new()
                             .padding(20)
                             .spacing(20)
-                            .push(expense_button)
-                            .push(income_button)
-                            .push(Button::new(Text::new("Cancel"))
-                                .on_press(Message::CancelDashboardAction))
+                            .push(Button::new(IcedText::new("Add Expense")).on_press(Message::ChooseAddExpense))
+                            .push(Button::new(IcedText::new("Add Income")).on_press(Message::ChooseAddIncome))
+                            .push(Button::new(IcedText::new("Cancel")).on_press(Message::CancelDashboardAction))
                             .into()
                     }
                     DashboardViewMode::AddExpense => {
-                        // Форма добавления расходов
                         let store_input = TextInput::new("Store Name", &self.store_name)
                             .on_input(Message::ChangeStoreName);
                         let date_input = TextInput::new("Purchase Date", &self.expense_date)
                             .on_input(Message::ChangeExpenseDate);
                         let sum_input = TextInput::new("Expense Amount", &self.expense_sum)
                             .on_input(Message::ChangeExpenseSum);
-                        let confirm_button = Button::new(Text::new("Confirm"))
-                            .on_press(Message::ConfirmAddExpense);
-                        let cancel_button = Button::new(Text::new("Cancel"))
-                            .on_press(Message::CancelDashboardAction);
+                        let confirm = Button::new(IcedText::new("Confirm")).on_press(Message::ConfirmAddExpense);
+                        let cancel = Button::new(IcedText::new("Cancel")).on_press(Message::CancelDashboardAction);
                         Column::new()
                             .padding(20)
                             .spacing(10)
                             .push(store_input)
                             .push(date_input)
                             .push(sum_input)
-                            .push(Row::new().spacing(10).push(confirm_button).push(cancel_button))
+                            .push(Row::new().spacing(10).push(confirm).push(cancel))
                             .into()
                     }
                     DashboardViewMode::AddIncome => {
-                        // Форма добавления прибыли
                         let source_input = TextInput::new("Income Source", &self.income_source)
-                            .on_input(Message::ChangeSource);
+                            .on_input(Message::ChangeIncomeSource);
                         let date_input = TextInput::new("Date", &self.income_date)
                             .on_input(Message::ChangeIncomeDate);
                         let sum_input = TextInput::new("Amount", &self.income_sum)
                             .on_input(Message::ChangeIncomeSum);
-                        let confirm_button = Button::new(Text::new("Confirm"))
-                            .on_press(Message::ConfirmAddIncome);
-                        let cancel_button = Button::new(Text::new("Cancel"))
-                            .on_press(Message::CancelDashboardAction);
+                        let confirm = Button::new(IcedText::new("Confirm")).on_press(Message::ConfirmAddIncome);
+                        let cancel = Button::new(IcedText::new("Cancel")).on_press(Message::CancelDashboardAction);
                         Column::new()
                             .padding(20)
                             .spacing(10)
                             .push(source_input)
                             .push(date_input)
                             .push(sum_input)
-                            .push(Row::new().spacing(10).push(confirm_button).push(cancel_button))
+                            .push(Row::new().spacing(10).push(confirm).push(cancel))
                             .into()
                     }
                 }
             }
         }
-        
     }
 }

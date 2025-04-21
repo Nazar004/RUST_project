@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use diesel::Queryable;
 use diesel::Insertable;
 use crate::schema::users;
-use crate::schema::transactions;
-use chrono::NaiveDate;
+// use crate::schema::transactions;
+// use chrono::NaiveDate;
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
 pub struct User {
@@ -26,13 +26,10 @@ pub struct AuthData {
 }
 
 
-// Новая структура — транзакция
-
-// src/model/mod.rs
-// src/model/mod.rs
 
 
-#[derive(Debug, Queryable)]
+
+#[derive(Debug, Queryable, Clone)]
 #[diesel(table_name = transactions)]
 pub struct Transaction {
     pub tran_type:   String,
