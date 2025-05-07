@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use diesel::Queryable;
 use diesel::Insertable;
 use crate::schema::users;
+// use crate::schema::transactions;
+// use chrono::NaiveDate;
 
 #[derive(Debug, Serialize, Deserialize, Queryable)]
 pub struct User {
@@ -21,4 +23,20 @@ pub struct NewUser {
 pub struct AuthData {
     pub username: String,
     pub password: String,
+}
+
+
+
+
+
+#[derive(Debug, Queryable, Clone)]
+#[diesel(table_name = transactions)]
+pub struct Transaction {
+    pub tran_type:   String,
+    pub user_id:     i32,
+    pub tran_id:     i32,
+    pub tran_source: String,
+    pub date:        String,
+    pub tran_amount: f64,              
+    pub tran_comment: Option<String>,
 }
