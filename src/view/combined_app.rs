@@ -264,10 +264,13 @@ impl Application for CombinedApp {
                 .push(Button::new(IcedText::new("Login")).on_press(Message::SwitchToLogin))
                 .into(),
             Screen::Dashboard(mode) => {
+                
                 match mode {
                     DashboardViewMode::Dashboard => {
+                        
                         let top_bar = Row::new()
-                            .padding(10)
+                            
+                            .padding(40)
                             .align_items(Alignment::Center)
                             .push(IcedText::new(self.user_name.as_deref().unwrap_or("")))
                             .push(Space::with_width(Length::Fill))
@@ -275,7 +278,7 @@ impl Application for CombinedApp {
                     
                         let controls = Row::new()
                             .spacing(10)
-                            .padding(10)
+                            .padding(40)
                             .push(Button::new(IcedText::new("Add Expense")).on_press(Message::ChooseAddExpense))
                             .push(Button::new(IcedText::new("Add Income")).on_press(Message::ChooseAddIncome));
                     
@@ -293,15 +296,26 @@ impl Application for CombinedApp {
                                     .push(IcedText::new(&tx.tran_source))
                                     .push(IcedText::new(&tx.date))
                                     .push(IcedText::new(format!("{:.2}", tx.tran_amount)))
+                                    
                             );
                         }
                     
                         // Превращаем список в Element и оборачиваем в Scrollable
-                        let content: Element<_> = list.into();
-                        let scrollable_list = Scrollable::new(content)
-                            .height(Length::Fill);
+                    //    let content: Element<_> = list.into();
+                    let content: Element<_> = list.into();
+                        use iced::widget::Container;
+                        let padded: Element<'_, Message> = Container::new(content)
+                        
+                            .padding(40)
+                            .into();
+
+
+                        let scrollable_list = Scrollable::new(padded).height(Length::Fill);
+                      //  let scrollable_list = Scrollable::new(content)
+                      //      .height(Length::Fill);
                     
                         Column::new()
+                        .align_items(Alignment::Center)
                             .push(top_bar)
                             .push(controls)
                             .push(scrollable_list)
@@ -326,6 +340,7 @@ impl Application for CombinedApp {
                             .push(Button::new(IcedText::new("Cancel")).on_press(Message::CancelDashboardAction)))
                         .into(),
                     DashboardViewMode::AddIncome => Column::new()
+                    
                         .padding(20)
                         .spacing(10)
                         .push(TextInput::new("Income Source", &self.income_source).on_input(Message::ChangeIncomeSource))

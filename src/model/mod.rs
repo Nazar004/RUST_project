@@ -40,3 +40,6 @@ pub struct Transaction {
     pub tran_amount: f64,              
     pub tran_comment: Option<String>,
 }
+
+
+
