@@ -200,61 +200,7 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
             vec![frame.into_geometry()]
         }
 
-        // fn draw(&self, _state: &Self::State, renderer: &Renderer, _theme: &Theme, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
-        //     let mut frame = Frame::new(renderer, bounds.size());
-        //     let center = frame.center();
-        //     let radius = center.x.min(center.y) * 0.8;
-        //     let total: f32 = self.data.iter().map(|(_, v)| *v).sum();
 
-        //     let mut start_angle = 0.0_f32;
-        //     for (i, (label, value)) in self.data.iter().enumerate() {
-        //         let pct = if total > 0.0 { value / total } else { 0.0 };
-        //         let sweep = pct * 2.0 * PI;
-        //         let end_angle = start_angle + sweep;
-
-        //     let path = Path::new(|p| {
-        //         p.move_to(Point::new(
-        //             center.x + radius * start_angle.cos(),
-        //             center.y + radius * start_angle.sin(),      
-        //         ));
-        //         p.arc(CanvasArc {
-        //             center,
-        //             radius,
-        //             start_angle,
-        //             end_angle,
-        //         });
-        //         p.arc(CanvasArc {
-        //             center,
-        //             radius: radius * 0.5, // внутренний радиус — "дырка"
-        //             start_angle: end_angle,
-        //             end_angle: start_angle,
-        //         });
-        //         p.close();
-        //     });
-
-            
-        //         let color = match i % 5 {
-        //             0 => Color::from_rgb(0.9, 0.3, 0.3),
-        //             1 => Color::from_rgb(0.3, 0.9, 0.3),
-        //             2 => Color::from_rgb(0.3, 0.3, 0.9),
-        //             3 => Color::from_rgb(0.9, 0.9, 0.3),
-        //             _ => Color::from_rgb(0.7, 0.3, 0.9),
-        //         };
-        //         frame.fill(&path, color);
-        //         let mid_angle = start_angle + sweep / 2.0;
-        //         let tx = center.x + radius * 0.6 * mid_angle.cos();
-        //         let ty = center.y + radius * 0.6 * mid_angle.sin();
-        //         frame.fill_text(CanvasText {
-        //             content: format!("{} ({:.0}%)", label, pct * 100.0),
-        //             position: Point::new(tx, ty),
-        //             color: Color::BLACK,
-        //             size: 14.0,
-        //             ..CanvasText::default()
-        //         });
-        //         start_angle = end_angle;
-        //     }
-        //     vec![frame.into_geometry()]
-        // }
     }
 
     let pie = Canvas::new(PieChart { data: chart_data })
@@ -273,7 +219,7 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
         .push(IcedText::new("Sorting:"))
         .push(sort_picker);
 
-    let mut tx_list_column = Column::new().padding(10).spacing(5);
+    let mut tx_list_column = Column::new().padding(10).spacing(5).align_items(Alignment::Center);
     tx_list_column = tx_list_column.push(IcedText::new("Transactions").size(18));
     
 
@@ -295,21 +241,33 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
             }
     }
 
-    for tx in &sorted_transactions {
-        let color = if tx.tran_type.eq_ignore_ascii_case("expense") {
-            Color::from_rgb(1.0, 0.0, 0.0)
-        } else {
-            Color::from_rgb(0.0, 0.6, 0.0)
-        };
-        let formatted_date = tx.date.format("%Y-%m-%d %H:%M:%S").to_string();
-        let line = format!("{} {} – {:+.2} [{}]", tx.tran_type, tx.tran_source, tx.tran_amount, formatted_date);
-        tx_list_column = tx_list_column.push(IcedText::new(line).style(iced::theme::Text::Color(color)));
-    }
+for tx in &sorted_transactions {
+    let color = if tx.tran_type.eq_ignore_ascii_case("expense") {
+        Color::from_rgb(1.0, 0.0, 0.0)
+    } else {
+        Color::from_rgb(0.0, 0.6, 0.0)
+    };
 
-    // let tx_list = Scrollable::new(tx_list_column).width(Length::FillPortion(2));
+    let formatted_date = tx.date.format("%Y-%m-%d %H:%M:%S").to_string();
+    let line = format!("{} {} – {:+.2} [{}]", tx.tran_type, tx.tran_source, tx.tran_amount, formatted_date);
+
+    let row = Row::new()
+        .spacing(10)
+        .align_items(Alignment::Center)
+        .push(IcedText::new(line).style(iced::theme::Text::Color(color)))
+        .push(
+            Button::new(IcedText::new("Delete"))
+                .on_press(Message::DeleteTransaction(tx.tran_id))
+        );
+
+    tx_list_column = tx_list_column.push(row);
+}
+
     let tx_list = Container::new(Scrollable::new(tx_list_column))
         .style(iced::theme::Container::Custom(Box::new(TransactionListBackground)))
         .width(Length::FillPortion(2));
+      
+
 
     let balance: f64 = app.transactions.iter().map(|tx| {
         if tx.tran_type == "Expense" { -tx.tran_amount } else { tx.tran_amount }

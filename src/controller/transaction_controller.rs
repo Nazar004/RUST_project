@@ -1,12 +1,11 @@
 // src/controller/transaction_controller.rs
-use diesel::prelude::*;
+use diesel::{prelude::*, r2d2};
 use diesel::r2d2::{Pool, ConnectionManager};
 use diesel::PgConnection;
 use diesel::result::Error as DieselError;
 use crate::schema::transactions::dsl::*;
 use crate::model::{Transaction, NewTransaction};
 use chrono::NaiveDateTime;
-
 /// Загрузить все транзакции пользователя
 pub fn load_transactions(
     pool: &Pool<ConnectionManager<PgConnection>>,
@@ -67,4 +66,17 @@ pub fn add_income(
             tran_amount.eq(amount_val),
         ))
         .execute(&mut conn)
+}
+
+
+pub fn delete_transaction(
+    pool: &r2d2::Pool<ConnectionManager<PgConnection>>,
+    tx_id: i32
+) -> Result<(), diesel::result::Error> {
+    let mut conn = match pool.get() {
+    Ok(c) => c,
+    Err(_) => return Err(diesel::result::Error::NotFound),
+};
+    diesel::delete(transactions.filter(tran_id.eq(tx_id))).execute(&mut conn)?;
+    Ok(())
 }

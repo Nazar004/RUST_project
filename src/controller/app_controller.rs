@@ -1,6 +1,7 @@
 use iced::Command;
 
 use crate::controller::login_controller::attempt_password_reset;
+use crate::controller::transaction_controller::delete_transaction;
 use crate::model::{CombinedApp, Message, Screen, DashboardViewMode, AuthData};
 use crate::controller::{
     login_controller::{attempt_login, handle_successful_login},
@@ -50,6 +51,32 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
                 app.reg_message = e;
             }
         
+
+        Message::DeleteTransaction(tx_id) => {
+    let pool = app.pool.clone();
+    return Command::perform(
+        async move {
+            delete_transaction(&pool, tx_id).map_err(|e| e.to_string())
+        },
+        Message::TransactionDeleted,
+    );
+}
+
+Message::TransactionDeleted(Ok(())) => {
+    if let Some(uid) = app.user_id {
+        let pool = app.pool.clone();
+        return Command::perform(
+            async move { handle_successful_login(&pool, uid).await },
+            Message::CombinedLoaded,
+        );
+    }
+}
+
+Message::TransactionDeleted(Err(e)) => {
+    // можно сохранить ошибку в поле, если хочешь
+    println!("Ошибка удаления: {}", e);
+}
+
         
         // DateSelectedExpense(date) => {
         //         app.show_date_picker_expense = false;

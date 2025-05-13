@@ -54,6 +54,8 @@ pub enum Message {
     CombinedLoaded((Vec<Transaction>, Vec<String>)),
     SortTypeChanged(SortType),
 
+DeleteTransaction(i32), // i32 = tran_id
+TransactionDeleted(Result<(), String>),
 
 
 
