@@ -55,12 +55,12 @@ pub enum Message {
     SortTypeChanged(SortType),
 
 
-    OpenDatePickerExpense,
-    CancelDatePickerExpense,
-    DateSelectedExpense(iced_aw::date_picker::Date),
-    OpenDatePickerIncome,
-    CancelDatePickerIncome,
-    DateSelectedIncome(NaiveDateTime),
+
+
+    // DateSelectedExpense(iced_aw::date_picker::Date),
+
+
+    // DateSelectedIncome(NaiveDateTime),
 
 
     ChangeExpenseDateString(String),
@@ -82,8 +82,8 @@ pub struct CombinedApp {
     pub user_id: Option<i32>,
     pub transactions: Vec<Transaction>,
     pub store_name: String,
-    pub show_date_picker_expense: bool,
-    pub show_date_picker_income: bool,
+    // pub show_date_picker_expense: bool,
+    // pub show_date_picker_income: bool,
     pub expense_date: NaiveDateTime,
     pub expense_sum: String,
     pub income_source: String,
@@ -149,8 +149,8 @@ impl Default for CombinedApp {
             // tx_list_state: Default::default(),
             transactions: Vec::new(),
             store_name: String::new(),
-            show_date_picker_expense: false,
-            show_date_picker_income: false,
+            // show_date_picker_expense: false,
+            // show_date_picker_income: false,
 
             expense_date: chrono::Local::now().naive_local(),
 

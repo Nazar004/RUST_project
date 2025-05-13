@@ -1,5 +1,4 @@
 use iced::Command;
-// use iced::theme; // можно удалить, если не нужен
 
 use crate::controller::login_controller::attempt_password_reset;
 use crate::model::{CombinedApp, Message, Screen, DashboardViewMode, AuthData};
@@ -9,7 +8,7 @@ use crate::controller::{
     transaction_controller::{add_expense, add_income},
 };
 
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono:: NaiveDate;
 
 
 
@@ -50,45 +49,19 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
         PasswordResetResult(Err(e)) => {
                 app.reg_message = e;
             }
-        Message::SubmitPasswordReset => {
-                if app.new_password != app.confirm_new_password {
-                    app.reg_message = "Passwords do not match".into();
-                } else {
-                    let pool   = app.pool.clone();
-                    let user   = app.login_username.clone();
-                    let secret = app.secret_pass.clone();
-                    let new_pw = app.new_password.clone();
-
-                    return Command::perform(
-                        async move {
-                            attempt_password_reset(&pool, &user, &secret, &new_pw).await
-                        },
-                        Message::PasswordResetResult,
-                    );
-                }
-            }
-        OpenDatePickerExpense => {
-                app.show_date_picker_expense = true;
-            }
-        CancelDatePickerExpense => {
-                app.show_date_picker_expense = false;
-            }
-        DateSelectedExpense(date) => {
-                app.show_date_picker_expense = false;
-                let selected: NaiveDate = date.into();
-                app.expense_date = selected.and_hms_opt(0, 0, 0).unwrap();
-            }
-        OpenDatePickerIncome => {
-                app.show_date_picker_income = true;
-            }
-        CancelDatePickerIncome => {
-                app.show_date_picker_income = false;
-            }
-        DateSelectedIncome(date) => {
-                app.show_date_picker_income = false;
-                let selected: NaiveDate = date.into();
-                app.income_date = selected.and_hms_opt(0, 0, 0).unwrap();
-            }
+        
+        
+        // DateSelectedExpense(date) => {
+        //         app.show_date_picker_expense = false;
+        //         let selected: NaiveDate = date.into();
+        //         app.expense_date = selected.and_hms_opt(0, 0, 0).unwrap();
+        //     }
+       
+        // DateSelectedIncome(date) => {
+        //         app.show_date_picker_income = false;
+        //         let selected: NaiveDate = date.into();
+        //         app.income_date = selected.and_hms_opt(0, 0, 0).unwrap();
+        //     }
         LoginResult(Ok(id)) => {
                 app.user_name = Some(app.login_username.clone());
                 app.user_id = Some(id);
@@ -145,12 +118,7 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
         ChooseAddIncome => app.current_screen = Screen::Dashboard(DashboardViewMode::AddIncome),
         CancelDashboardAction => app.current_screen = Screen::Dashboard(DashboardViewMode::Main),
         ChangeStoreName(v) => app.store_name = v,
-        ChangeExpenseDate(v) => {
-                // Попытка спарсить строку
-                if let Ok(parsed) = NaiveDate::parse_from_str(&v, "%Y-%m-%d") {
-                    app.expense_date = parsed.and_hms_opt(0, 0, 0).unwrap();
-                }
-            },
+
         ChangeExpenseSum(v) => app.expense_sum = v,
         ChangeIncomeSource(v) => app.income_source = v,
         ChangeExpenseDate(v) => {
@@ -205,7 +173,7 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
         SortTypeChanged(sort) => {
                 app.sort_type = sort;
             },
-        Message::SubmitPasswordReset => {
+        SubmitPasswordReset => {
                 // проверяем совпадение new/confirm
             if app.new_password != app.confirm_new_password {
             app.reg_message = "Passwords do not match".into();

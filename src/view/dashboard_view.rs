@@ -1,19 +1,62 @@
 use iced::{
     widget::{Button, Canvas, Column, PickList, Row, Scrollable, Space, Text as IcedText, TextInput},
-    Alignment, Color, Element, Length, Point, Rectangle, mouse::Cursor, Renderer, Theme,
+    Alignment, Color, Element, Length, Point, Rectangle, mouse::Cursor, Renderer, Theme,Background,
 };
 use iced::widget::canvas::{Frame, Path, Program, Geometry, Text as CanvasText};
 use iced::widget::canvas::path::Arc as CanvasArc;
+use iced::widget::Container;
 
-use iced_aw::date_picker::Date;
-use iced_aw::DatePicker;
+
 
 use std::collections::HashMap;
-use std::f32::consts::PI;
+// use std::f32::consts::PI;
 
 use crate::model::{CombinedApp, DashboardViewMode, Message};
 use crate::model::state::SortType;
+// Добавить в dashboard_view.rs
 
+struct BlackBackground;
+
+impl iced::widget::container::StyleSheet for BlackBackground {
+    type Style = Theme;
+
+    fn appearance(&self, _style: &Self::Style) -> iced::widget::container::Appearance {
+        iced::widget::container::Appearance {
+            background: Some(iced::Background::Color(Color::BLACK)),
+            text_color: Some(Color::WHITE),
+            ..Default::default()
+        }
+    }
+}
+
+
+struct BodyBackground;
+
+impl iced::widget::container::StyleSheet for BodyBackground {
+    type Style = Theme;
+
+    fn appearance(&self, _style: &Self::Style) -> iced::widget::container::Appearance {
+        iced::widget::container::Appearance {
+            background: Some(Background::Color(Color::from_rgb(0.686, 0.933, 0.933))), // светло-серый
+            text_color: None,
+            ..Default::default()
+        }
+    }
+}
+
+struct TransactionListBackground;
+
+impl iced::widget::container::StyleSheet for TransactionListBackground {
+    type Style = iced::Theme;
+
+    fn appearance(&self, _style: &Self::Style) -> iced::widget::container::Appearance {
+        iced::widget::container::Appearance {
+            background: Some(iced::Background::Color(iced::Color::from_rgb(0.9, 0.9, 0.9))), // светло-серый
+            text_color: None,
+            ..Default::default()
+        }
+    }
+}
 
 
 pub fn render<'a>(
@@ -49,47 +92,131 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
     }
     impl<Message> Program<Message> for PieChart {
         type State = ();
-        fn draw(&self, _state: &Self::State, renderer: &Renderer, _theme: &Theme, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
+        fn draw(
+            &self,
+            _state: &Self::State,
+            renderer: &Renderer,
+            _theme: &Theme,
+            bounds: Rectangle,
+            _cursor: Cursor,
+        ) -> Vec<Geometry> {
             let mut frame = Frame::new(renderer, bounds.size());
             let center = frame.center();
-            let radius = center.x.min(center.y) * 0.8;
+            let outer_radius = center.x.min(center.y) * 0.8;
+            let inner_radius = outer_radius * 0.5;
             let total: f32 = self.data.iter().map(|(_, v)| *v).sum();
 
             let mut start_angle = 0.0_f32;
             for (i, (label, value)) in self.data.iter().enumerate() {
                 let pct = if total > 0.0 { value / total } else { 0.0 };
-                let sweep = pct * 2.0 * PI;
+                let sweep = pct * 2.0 * std::f32::consts::PI;
                 let end_angle = start_angle + sweep;
-                let sx = center.x + radius * start_angle.cos();
-                let sy = center.y + radius * start_angle.sin();
+
+                let sx = center.x + outer_radius * start_angle.cos();
+                let sy = center.y + outer_radius * start_angle.sin();
+
                 let path = Path::new(|p| {
                     p.move_to(center);
                     p.line_to(Point::new(sx, sy));
-                    p.arc(CanvasArc { center, radius, start_angle, end_angle });
+                    p.arc(CanvasArc {
+                        center,
+                        radius: outer_radius,
+                        start_angle,
+                        end_angle,
+                    });
                     p.close();
                 });
-                let color = match i % 5 {
-                    0 => Color::from_rgb(0.9, 0.3, 0.3),
-                    1 => Color::from_rgb(0.3, 0.9, 0.3),
-                    2 => Color::from_rgb(0.3, 0.3, 0.9),
-                    3 => Color::from_rgb(0.9, 0.9, 0.3),
-                    _ => Color::from_rgb(0.7, 0.3, 0.9),
+
+                let color = match i % 8 {
+                    0 => Color::from_rgb(0.8, 0.1, 0.4),
+                    1 => Color::from_rgb(0.1, 0.8, 0.4),
+                    2 => Color::from_rgb(0.4, 0.4, 1.0),
+                    3 => Color::from_rgb(1.0, 0.6, 0.2),
+                    4 => Color::from_rgb(0.6, 0.2, 1.0),
+                    5 => Color::from_rgb(0.2, 1.0, 0.8),
+                    6 => Color::from_rgb(0.8, 0.8, 0.2),
+                    _ => Color::from_rgb(0.3, 0.3, 0.3),
                 };
+
                 frame.fill(&path, color);
+
+                // Подписи
                 let mid_angle = start_angle + sweep / 2.0;
-                let tx = center.x + radius * 0.6 * mid_angle.cos();
-                let ty = center.y + radius * 0.6 * mid_angle.sin();
+                let tx = center.x + outer_radius * 0.65 * mid_angle.cos();
+                let ty = center.y + outer_radius * 0.65 * mid_angle.sin();
                 frame.fill_text(CanvasText {
                     content: format!("{} ({:.0}%)", label, pct * 100.0),
                     position: Point::new(tx, ty),
                     color: Color::BLACK,
                     size: 14.0,
-                    ..CanvasText::default()
+                    ..Default::default()
                 });
+
                 start_angle = end_angle;
             }
+
+            // Очистим центр: белый круг
+            let clear_center = Path::circle(center, inner_radius);
+            frame.fill(&clear_center, Color::from_rgb(0.686, 0.933, 0.933));
+
             vec![frame.into_geometry()]
         }
+
+        // fn draw(&self, _state: &Self::State, renderer: &Renderer, _theme: &Theme, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
+        //     let mut frame = Frame::new(renderer, bounds.size());
+        //     let center = frame.center();
+        //     let radius = center.x.min(center.y) * 0.8;
+        //     let total: f32 = self.data.iter().map(|(_, v)| *v).sum();
+
+        //     let mut start_angle = 0.0_f32;
+        //     for (i, (label, value)) in self.data.iter().enumerate() {
+        //         let pct = if total > 0.0 { value / total } else { 0.0 };
+        //         let sweep = pct * 2.0 * PI;
+        //         let end_angle = start_angle + sweep;
+
+        //     let path = Path::new(|p| {
+        //         p.move_to(Point::new(
+        //             center.x + radius * start_angle.cos(),
+        //             center.y + radius * start_angle.sin(),      
+        //         ));
+        //         p.arc(CanvasArc {
+        //             center,
+        //             radius,
+        //             start_angle,
+        //             end_angle,
+        //         });
+        //         p.arc(CanvasArc {
+        //             center,
+        //             radius: radius * 0.5, // внутренний радиус — "дырка"
+        //             start_angle: end_angle,
+        //             end_angle: start_angle,
+        //         });
+        //         p.close();
+        //     });
+
+            
+        //         let color = match i % 5 {
+        //             0 => Color::from_rgb(0.9, 0.3, 0.3),
+        //             1 => Color::from_rgb(0.3, 0.9, 0.3),
+        //             2 => Color::from_rgb(0.3, 0.3, 0.9),
+        //             3 => Color::from_rgb(0.9, 0.9, 0.3),
+        //             _ => Color::from_rgb(0.7, 0.3, 0.9),
+        //         };
+        //         frame.fill(&path, color);
+        //         let mid_angle = start_angle + sweep / 2.0;
+        //         let tx = center.x + radius * 0.6 * mid_angle.cos();
+        //         let ty = center.y + radius * 0.6 * mid_angle.sin();
+        //         frame.fill_text(CanvasText {
+        //             content: format!("{} ({:.0}%)", label, pct * 100.0),
+        //             position: Point::new(tx, ty),
+        //             color: Color::BLACK,
+        //             size: 14.0,
+        //             ..CanvasText::default()
+        //         });
+        //         start_angle = end_angle;
+        //     }
+        //     vec![frame.into_geometry()]
+        // }
     }
 
     let pie = Canvas::new(PieChart { data: chart_data })
@@ -110,6 +237,7 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
 
     let mut tx_list_column = Column::new().padding(10).spacing(5);
     tx_list_column = tx_list_column.push(IcedText::new("Transactions").size(18));
+    
 
     let mut sorted_transactions = app.transactions.clone();
     match app.sort_type {
@@ -130,38 +258,59 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
         tx_list_column = tx_list_column.push(IcedText::new(line).style(iced::theme::Text::Color(color)));
     }
 
-    let tx_list = Scrollable::new(tx_list_column).width(Length::FillPortion(2));
+    // let tx_list = Scrollable::new(tx_list_column).width(Length::FillPortion(2));
+    let tx_list = Container::new(Scrollable::new(tx_list_column))
+        .style(iced::theme::Container::Custom(Box::new(TransactionListBackground)))
+        .width(Length::FillPortion(2));
 
     let balance: f64 = app.transactions.iter().map(|tx| {
         if tx.tran_type == "Expense" { -tx.tran_amount } else { tx.tran_amount }
     }).sum();
 
-    let top_bar = Row::new()
+
+
+let top_bar = Container::new(
+    Row::new()
         .padding(16)
         .align_items(Alignment::Center)
         .spacing(20)
-        .push(IcedText::new(app.user_name.as_deref().unwrap_or("")).size(20))
+        .push(IcedText::new(app.user_name.as_deref().unwrap_or(""))
+            .size(20)
+            .style(Color::WHITE))
         .push(Space::with_width(Length::Fill))
-        .push(IcedText::new(format!("Balance: {:+.2}", balance)).size(20))
+        .push(IcedText::new(format!("Balance: {:+.2}", balance))
+            .size(20)
+            .style(Color::WHITE))
         .push(Space::with_width(Length::Fill))
-        .push(Button::new(IcedText::new("Logout")).on_press(Message::SwitchToLogin));
+        .push(
+            Button::new(IcedText::new("Logout"))
+                .on_press(Message::SwitchToLogin)
+        )
+)
+    .width(Length::Fill)
+    .padding(10)
+    .style(iced::theme::Container::Custom(Box::new(BlackBackground)));
+
 
     let buttons = Column::new()
         .spacing(10)
         .push(Button::new(IcedText::new("Add Expense")).on_press(Message::ChooseAddExpense))
         .push(Button::new(IcedText::new("Add Income")).on_press(Message::ChooseAddIncome));
-
-    Column::new()
-        .push(top_bar)
-        .push(top_controls)
-        .push(
-            Row::new()
-                .spacing(40)
-                .push(pie)
-                .push(tx_list)
-                .push(buttons)
-        )
-        .into()
+        Container::new(
+            Column::new()
+                .push(top_bar)
+                .push(top_controls)
+                .push(
+                    Row::new()
+                        .spacing(40)
+                        .push(pie)
+                        .push(tx_list)
+                        .push(buttons)
+                ))
+                .style(iced::theme::Container::Custom(Box::new(BodyBackground)))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into()
 }
 
 fn render_add_expense(app: &CombinedApp) -> Element<Message> {
@@ -175,20 +324,10 @@ fn render_add_expense(app: &CombinedApp) -> Element<Message> {
         .push(
     TextInput::new("Date (YYYY-MM-DD)", &app.expense_date.format("%Y-%m-%d").to_string())
         .on_input(Message::ChangeExpenseDateString)
-)
-.push(
-    Button::new(IcedText::new("Today")).on_press(Message::SetExpenseDateToToday)
-)
-        // .push(
-        // DatePicker::new(
-        //     app.show_date_picker_expense,
-        //     Date::from(app.expense_date.date()), 
-        //     Button::new(IcedText::new(app.expense_date.format("%Y-%m-%d").to_string()))
-        //         .on_press(Message::OpenDatePickerExpense),
-        //     Message::CancelDatePickerExpense,
-        //     Message::DateSelectedExpense,
-        // )
-        // )   
+        )
+        .push(
+            Button::new(IcedText::new("Today")).on_press(Message::SetExpenseDateToToday)
+        )
 
         .push(
             TextInput::new("Amount", &app.expense_sum)
@@ -217,23 +356,14 @@ fn render_add_income(app: &CombinedApp) -> Element<Message> {
             TextInput::new("Source", &app.income_source)
                 .on_input(Message::ChangeIncomeSource)
         )
-        // .push(
-        //     DatePicker::new(
-        //         app.show_date_picker_income,
-        //         Date::from(app.income_date.date()),
-        //         Button::new(IcedText::new(app.income_date.format("%Y-%m-%d").to_string()))
-        //             .on_press(Message::OpenDatePickerIncome),
-        //         Message::CancelDatePickerIncome,
-        //         Message::DateSelectedIncome,
-        //     )
-        // )
+
         .push(
     TextInput::new("Date (YYYY-MM-DD)", &app.expense_date.format("%Y-%m-%d").to_string())
         .on_input(Message::ChangeExpenseDateString)
-)
-.push(
-    Button::new(IcedText::new("Today")).on_press(Message::SetExpenseDateToToday)
-)
+        )
+        .push(
+            Button::new(IcedText::new("Today")).on_press(Message::SetExpenseDateToToday)
+        )
         .push(
             TextInput::new("Amount", &app.income_sum)
                 .on_input(Message::ChangeIncomeSum)
