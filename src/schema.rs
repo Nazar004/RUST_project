@@ -6,7 +6,7 @@ table! {
         tran_type -> Varchar,
         user_id -> Int4,
         tran_source -> Varchar,
-        date -> Varchar,
+        date -> Timestamp,
         tran_amount -> Float8,
         tran_comment -> Nullable<Varchar>,
         tag_id -> Nullable<Int4>,

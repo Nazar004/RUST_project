@@ -4,15 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-diesel = { version = "2.1", features = ["postgres", "r2d2"] }
-dotenv = "0.15"
-bcrypt = "0.12"
-serde = { version = "1.0", features = ["derive"] }
 iced = { version = "0.10", features = ["canvas"] }
+iced_aw = { git = "https://github.com/iced-rs/iced_aw", branch = "main", features = ["date_picker"] }
+
+
+
 chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+dotenv = "0.15"
+bcrypt = "0.17"
+diesel = { version = "2.1", features = ["postgres", "r2d2", "chrono"] }
 postgres = { version = "0.19", features = ["with-chrono-0_4"] }
 plotters = "0.3.4"
 plotters-iced = "0.4"
+
 
 
 [[bin]]

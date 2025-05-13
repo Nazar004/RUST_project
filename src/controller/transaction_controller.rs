@@ -5,6 +5,7 @@ use diesel::PgConnection;
 use diesel::result::Error as DieselError;
 use crate::schema::transactions::dsl::*;
 use crate::model::{Transaction, NewTransaction};
+use chrono::NaiveDateTime;
 
 /// Загрузить все транзакции пользователя
 pub fn load_transactions(
@@ -23,7 +24,7 @@ pub fn add_expense(
     pool: &Pool<ConnectionManager<PgConnection>>,
     uid: i32,
     source_str: &str,
-    date_str: &str,
+    date_str: NaiveDateTime,
     amount_val: f64,
     tag_id_val: Option<i32>,
 ) -> Result<(), DieselError> {
@@ -53,7 +54,7 @@ pub fn add_income(
     pool: &Pool<ConnectionManager<PgConnection>>,
     uid: i32,
     source_str: &str,
-    date_str: &str,
+    date_str: NaiveDateTime,
     amount_val: f64,
 ) -> Result<usize, DieselError> {
     let mut conn = pool.get().map_err(|_| DieselError::NotFound)?;
