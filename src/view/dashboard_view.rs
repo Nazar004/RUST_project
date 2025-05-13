@@ -15,6 +15,11 @@ use crate::model::{CombinedApp, DashboardViewMode, Message};
 use crate::model::state::SortType;
 // Добавить в dashboard_view.rs
 
+
+
+
+
+
 struct BlackBackground;
 
 impl iced::widget::container::StyleSheet for BlackBackground {
@@ -43,7 +48,6 @@ impl iced::widget::container::StyleSheet for BodyBackground {
         }
     }
 }
-
 struct TransactionListBackground;
 
 impl iced::widget::container::StyleSheet for TransactionListBackground {
@@ -51,12 +55,15 @@ impl iced::widget::container::StyleSheet for TransactionListBackground {
 
     fn appearance(&self, _style: &Self::Style) -> iced::widget::container::Appearance {
         iced::widget::container::Appearance {
-            background: Some(iced::Background::Color(iced::Color::from_rgb(0.9, 0.9, 0.9))), // светло-серый
+            background: Some(iced::Background::Color(iced::Color::from_rgb(0.9, 0.9, 0.9))),
+            border_width: 2.0,
+            border_color: Color::BLACK,
             text_color: None,
             ..Default::default()
         }
     }
 }
+
 
 
 pub fn render<'a>(
@@ -112,20 +119,51 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
                 let sweep = pct * 2.0 * std::f32::consts::PI;
                 let end_angle = start_angle + sweep;
 
-                let sx = center.x + outer_radius * start_angle.cos();
-                let sy = center.y + outer_radius * start_angle.sin();
+                // let sx = center.x + outer_radius * start_angle.cos();
+                // let sy = center.y + outer_radius * start_angle.sin();
 
+                // let path = Path::new(|p| {
+                //     p.move_to(center);
+                //     p.line_to(Point::new(sx, sy));
+                //     p.arc(CanvasArc {
+                //         center,
+                //         radius: outer_radius,
+                //         start_angle,
+                //         end_angle,
+                //     });
+                //     p.close();
+                // });
                 let path = Path::new(|p| {
-                    p.move_to(center);
-                    p.line_to(Point::new(sx, sy));
+                    // Внешняя дуга — от начала до конца
+                    p.move_to(Point {
+                        x: center.x + outer_radius * start_angle.cos(),
+                        y: center.y + outer_radius * start_angle.sin(),
+                    });
+                      // Линия от внешней к внутренней дуге
+                    p.line_to(Point {
+                        x: center.x + inner_radius * end_angle.cos(),
+                        y: center.y + inner_radius * end_angle.sin(),
+                    });
                     p.arc(CanvasArc {
                         center,
                         radius: outer_radius,
                         start_angle,
                         end_angle,
                     });
-                    p.close();
+
+                  
+
+                    // Внутренняя дуга — от конца к началу, в обратную сторону
+                    p.arc(CanvasArc {
+                        center,
+                        radius: inner_radius,
+                        start_angle: end_angle,
+                        end_angle: start_angle,
+                    });
+
+                    p.close(); // замыкаем путь
                 });
+
 
                 let color = match i % 8 {
                     0 => Color::from_rgb(0.8, 0.1, 0.4),
