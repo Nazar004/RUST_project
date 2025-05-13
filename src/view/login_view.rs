@@ -1,32 +1,30 @@
 use iced::{
-    widget::{TextInput, Button, Column, Row, Text},
+    widget::{Button, Column, Text as IcedText, TextInput},
     Alignment, Element,
 };
-use crate::view::combined_app::{CombinedApp, Message};
 
-pub fn view(app: &CombinedApp) -> Element<Message> {
-    let username_input = TextInput::new("User name", &app.login_username)
-        .on_input(Message::LoginUsernameChanged);
-    let password_input = TextInput::new("Password", &app.login_password)
-        .on_input(Message::LoginPasswordChanged);
-    let login_button = Button::new(Text::new("Войти"))
-        .on_press(Message::LoginPressed);
-    let switch_button = Button::new(Text::new("Регистрация"))
-        .on_press(Message::SwitchToRegistration);
+use crate::model::{CombinedApp, Message};
 
-    let content = Column::new()
+pub fn render(app: &CombinedApp) -> Element<Message> {
+    Column::new()
         .padding(20)
         .spacing(15)
         .align_items(Alignment::Center)
-        .push(Text::new("Вход в систему"))
-        .push(username_input)
-        .push(password_input)
-        .push(login_button)
-        .push(Text::new(&app.login_message))
-        .push(switch_button);
-
-    Row::new()
-        .align_items(Alignment::Center)
-        .push(content)
+        .push(IcedText::new("Login"))
+        .push(
+            TextInput::new("Username", &app.login_username)
+                .on_input(Message::LoginUsernameChanged),
+        )
+        .push(
+            TextInput::new("Password", &app.login_password)
+                .on_input(Message::LoginPasswordChanged)
+                .password(), // ← вот это добавляется
+        )
+        .push(Button::new(IcedText::new("Login")).on_press(Message::LoginPressed))
+        .push(IcedText::new(&app.login_message))
+        .push(Button::new(IcedText::new("Register")).on_press(Message::SwitchToRegistration))
+        .push(Button::new(IcedText::new("Exit")).on_press(Message::ExitPressed))
+        .push(Button::new(IcedText::new("Forgot password?"))
+        .on_press(Message::RequestPasswordReset),)
         .into()
 }

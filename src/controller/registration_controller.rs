@@ -14,6 +14,7 @@ pub fn attempt_register(
     let new_user = NewUser {
         username: auth_data.username.clone(),
         password: hashed,
+        secret_pass:auth_data.secret_pass.clone(),
     };
     diesel::insert_into(crate::schema::users::table)
         .values(new_user)

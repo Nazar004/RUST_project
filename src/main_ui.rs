@@ -5,7 +5,11 @@ mod view;
 
 use iced::Application;
 use iced::Settings;
+use model::CombinedApp;
 
 fn main() {
-    view::combined_app::CombinedApp::run(Settings::default());
+    if let Err(e) = CombinedApp::run(Settings::default()) {
+        eprintln!("Application error: {e}");
+        std::process::exit(1);
+    }
 }

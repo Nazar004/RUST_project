@@ -1,61 +1,21 @@
-
-use std::env;
-use postgres::{Client, NoTls};
-use crate::model::Transaction;
-
-// для Diesel-вставок:
+// src/controller/transaction_controller.rs
 use diesel::prelude::*;
-use diesel::insert_into;
 use diesel::r2d2::{Pool, ConnectionManager};
 use diesel::PgConnection;
+use diesel::result::Error as DieselError;
 use crate::schema::transactions::dsl::*;
+use crate::model::{Transaction, NewTransaction};
 
 /// Загрузить все транзакции пользователя
-pub fn load_transactions(uid: i32) -> Result<Vec<Transaction>, String> {
-    let url = env::var("DATABASE_URL")
-        .map_err(|_| "DATABASE_URL not set".to_string())?;
-    let mut client = Client::connect(&url, NoTls)
-        .map_err(|e| format!("DB connection error: {:?}", e))?;
-
-    let rows = client.query(
-        "
-        SELECT tran_id, tran_type, user_id, tran_source, date, tran_amount, tran_comment
-        FROM transactions
-        WHERE user_id = $1
-        ORDER BY date DESC
-        ",
-        &[&uid],
-    )
-    .map_err(|e| format!("Load transactions error: {:?}", e))?;
-
-    let result = rows.into_iter().map(|row| Transaction {
-        tran_id:      row.get("tran_id"),
-        tran_type:    row.get("tran_type"),
-        user_id:      row.get("user_id"),
-        tran_source:  row.get("tran_source"),
-        date:         row.get("date"),
-        tran_amount:  row.get("tran_amount"),
-        tran_comment: row.get("tran_comment"),
-    })
-    .collect();
-
-    Ok(result)
-}
-
-/// Удалить транзакцию
-pub fn delete_transaction(tid: i32) -> Result<u64, String> {
-    let url = env::var("DATABASE_URL")
-        .map_err(|_| "DATABASE_URL not set".to_string())?;
-    let mut client = Client::connect(&url, NoTls)
-        .map_err(|e| format!("DB connection error: {:?}", e))?;
-
-    let count = client.execute(
-        "DELETE FROM transactions WHERE tran_id = $1",
-        &[&tid],
-    )
-    .map_err(|e| format!("Delete transaction error: {:?}", e))?;
-
-    Ok(count)
+pub fn load_transactions(
+    pool: &Pool<ConnectionManager<PgConnection>>,
+    uid: i32
+) -> Result<Vec<Transaction>, DieselError> {
+    let mut conn = pool.get().map_err(|_| DieselError::NotFound)?;
+    transactions
+        .filter(user_id.eq(uid))
+        .order(date.desc())
+        .load::<Transaction>(&mut conn)
 }
 
 /// Вставить расход
@@ -65,18 +25,28 @@ pub fn add_expense(
     source_str: &str,
     date_str: &str,
     amount_val: f64,
-) -> Result<usize, diesel::result::Error> {
-    let mut conn = pool.get().expect("DB pool error");
-    insert_into(transactions)
-        .values((
-            tran_type.eq("Expense"),
-            user_id.eq(uid),
-            tran_source.eq(source_str),
-            date.eq(date_str),
-            tran_amount.eq(amount_val),
-        ))
-        .execute(&mut conn)
+    tag_id_val: Option<i32>,
+) -> Result<(), DieselError> {
+    let mut conn = pool.get().map_err(|_| DieselError::NotFound)?;
+
+
+    let new_tx = NewTransaction {
+        tran_type: "Expense",
+        user_id: uid,
+        tran_source: source_str,
+        date: date_str,
+        tran_amount: amount_val,
+        tag_id: tag_id_val,
+        tran_comment: None,
+    };
+
+    diesel::insert_into(transactions)
+        .values(&new_tx)
+        .execute(&mut conn)?;
+
+    Ok(())
 }
+
 
 /// Вставить доход
 pub fn add_income(
@@ -85,9 +55,9 @@ pub fn add_income(
     source_str: &str,
     date_str: &str,
     amount_val: f64,
-) -> Result<usize, diesel::result::Error> {
-    let mut conn = pool.get().expect("DB pool error");
-    insert_into(transactions)
+) -> Result<usize, DieselError> {
+    let mut conn = pool.get().map_err(|_| DieselError::NotFound)?;
+    diesel::insert_into(transactions)
         .values((
             tran_type.eq("Income"),
             user_id.eq(uid),

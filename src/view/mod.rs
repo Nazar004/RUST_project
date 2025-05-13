@@ -1,4 +1,5 @@
-pub mod combined_app;
 pub mod login_view;
-pub mod registration_view;
-pub mod dashboard;
+pub mod register_view;
+pub mod dashboard_view;
+pub mod app;
+pub mod reset_password_view;
