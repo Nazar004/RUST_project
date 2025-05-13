@@ -1,5 +1,4 @@
 use iced::Command;
-
 use crate::controller::login_controller::attempt_password_reset;
 use crate::controller::transaction_controller::delete_transaction;
 use crate::model::{CombinedApp, Message, Screen, DashboardViewMode, AuthData};
@@ -8,10 +7,7 @@ use crate::controller::{
     registration_controller::attempt_register,
     transaction_controller::{add_expense, add_income},
 };
-
 use chrono:: NaiveDate;
-
-
 
 pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
     use Message::*;
@@ -53,42 +49,28 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
         
 
         Message::DeleteTransaction(tx_id) => {
-    let pool = app.pool.clone();
-    return Command::perform(
+            let pool = app.pool.clone();
+            return Command::perform(
         async move {
             delete_transaction(&pool, tx_id).map_err(|e| e.to_string())
-        },
+                },
         Message::TransactionDeleted,
-    );
-}
+            );
+        }
 
-Message::TransactionDeleted(Ok(())) => {
-    if let Some(uid) = app.user_id {
-        let pool = app.pool.clone();
-        return Command::perform(
-            async move { handle_successful_login(&pool, uid).await },
-            Message::CombinedLoaded,
-        );
-    }
-}
+        Message::TransactionDeleted(Ok(())) => {
+            if let Some(uid) = app.user_id {
+                let pool = app.pool.clone();
+                return Command::perform(
+                    async move { handle_successful_login(&pool, uid).await },
+                    Message::CombinedLoaded,
+                );
+            }
+        }
 
-Message::TransactionDeleted(Err(e)) => {
-    // можно сохранить ошибку в поле, если хочешь
-    println!("Ошибка удаления: {}", e);
-}
-
-        
-        // DateSelectedExpense(date) => {
-        //         app.show_date_picker_expense = false;
-        //         let selected: NaiveDate = date.into();
-        //         app.expense_date = selected.and_hms_opt(0, 0, 0).unwrap();
-        //     }
-       
-        // DateSelectedIncome(date) => {
-        //         app.show_date_picker_income = false;
-        //         let selected: NaiveDate = date.into();
-        //         app.income_date = selected.and_hms_opt(0, 0, 0).unwrap();
-        //     }
+        Message::TransactionDeleted(Err(e)) => {
+            println!("Error: {}", e);
+        }
         LoginResult(Ok(id)) => {
                 app.user_name = Some(app.login_username.clone());
                 app.user_id = Some(id);
@@ -104,33 +86,32 @@ Message::TransactionDeleted(Err(e)) => {
         RegPasswordChanged(v) => app.reg_password = v,
         RegConfirmChanged(v) => app.reg_confirm = v,
         RegisterPressed => {
+            if app.reg_password != app.reg_confirm {
+                app.reg_message = "Passwords do not match".into();
+            } else if app.reg_password.len() < 6 {
+                app.reg_message = "Password must be at least 6 characters".into();
+            } else if !app.reg_password.chars().any(|c| c.is_uppercase()) {
+                app.reg_message = "Password must contain at least one uppercase letter".into();
+            } else if !app.reg_password.chars().any(|c| c.is_ascii_digit()) {
+                app.reg_message = "Password must contain at least one number".into();
+            } else {
+                let user = app.reg_username.clone();
+                let pass = app.reg_password.clone();
+                let secret = app.secret_pass.clone();
+                let pool = app.pool.clone();
             
-                if app.reg_password != app.reg_confirm {
-            app.reg_message = "Passwords do not match".into();
-                } else if app.reg_password.len() < 6 {
-                    app.reg_message = "Password must be at least 6 characters".into();
-                } else if !app.reg_password.chars().any(|c| c.is_uppercase()) {
-                    app.reg_message = "Password must contain at least one uppercase letter".into();
-                } else if !app.reg_password.chars().any(|c| c.is_ascii_digit()) {
-                    app.reg_message = "Password must contain at least one number".into();
-                } else {
-                    let user = app.reg_username.clone();
-                    let pass = app.reg_password.clone();
-                    let secret = app.secret_pass.clone();
-                    let pool = app.pool.clone();
-            
-                    return Command::perform(
-                        async move {
-                            attempt_register(&pool, &AuthData {
-                                username: user,
-                                password: pass,
-                                secret_pass: secret,
-                            })
-                        },
-                        RegisterResult,
-                    );
-                }
+                return Command::perform(
+                    async move {
+                        attempt_register(&pool, &AuthData {
+                            username: user,
+                            password: pass,
+                            secret_pass: secret,
+                        })
+                    },
+                RegisterResult,
+                );
             }
+        }
         RegisterResult(Ok(())) => app.current_screen = Screen::Login,
         RegisterResult(Err(e)) => app.reg_message = e,
         SwitchToLogin => {
@@ -149,7 +130,6 @@ Message::TransactionDeleted(Err(e)) => {
         ChangeExpenseSum(v) => app.expense_sum = v,
         ChangeIncomeSource(v) => app.income_source = v,
         ChangeExpenseDate(v) => {
-                // Попытка спарсить строку
                 if let Ok(parsed) = NaiveDate::parse_from_str(&v, "%Y-%m-%d") {
                     app.income_date = parsed.and_hms_opt(0, 0, 0).unwrap();
                 }
@@ -202,7 +182,6 @@ Message::TransactionDeleted(Err(e)) => {
                 app.sort_type = sort;
             },
         SubmitPasswordReset => {
-                // проверяем совпадение new/confirm
             if app.new_password != app.confirm_new_password {
             app.reg_message = "Passwords do not match".into();
             } else {
@@ -212,39 +191,36 @@ Message::TransactionDeleted(Err(e)) => {
             let new_pw = app.new_password.clone();
 
             return Command::perform(
-                // ✋ обязательно async move, чтобы это было Future<Output = Result<(),String>>
-                async move {
-                    attempt_password_reset(&pool, &user, &secret, &new_pw).await
-                },
-                Message::PasswordResetResult,
-            );
+                    async move {
+                        attempt_password_reset(&pool, &user, &secret, &new_pw).await
+                    },
+                    Message::PasswordResetResult,
+                );
+            }
         }
-    }
        
 
-    ChangeIncomeDate(v) => {
-        // Попытка спарсить строку
-        if let Ok(parsed) = NaiveDate::parse_from_str(&v, "%Y-%m-%d") {
-            app.income_date = parsed.and_hms_opt(0, 0, 0).unwrap();
-        }
-        app.income_date_str = v;
-    },
-
-    ChangeExpenseDateString(v) => {
-        // Попытка спарсить строку
-        if let Ok(parsed) = NaiveDate::parse_from_str(&v, "%Y-%m-%d") {
-            app.expense_date = parsed.and_hms_opt(0, 0, 0).unwrap();
-        }
-        app.expense_date_str = v;
-    },
-
-    SetExpenseDateToToday => {
-        let today = chrono::Local::now().naive_local().date().and_hms_opt(0, 0, 0).unwrap();
-        app.expense_date = today;
-        app.expense_date_str = today.format("%Y-%m-%d").to_string();
-    }
-
+        ChangeIncomeDate(v) => {
+            if let Ok(parsed) = NaiveDate::parse_from_str(&v, "%Y-%m-%d") {
+                app.income_date = parsed.and_hms_opt(0, 0, 0).unwrap();
             }
+            app.income_date_str = v;
+        },
+
+        ChangeExpenseDateString(v) => {
+            if let Ok(parsed) = NaiveDate::parse_from_str(&v, "%Y-%m-%d") {
+                app.expense_date = parsed.and_hms_opt(0, 0, 0).unwrap();
+            }
+            app.expense_date_str = v;
+        },
+
+        SetExpenseDateToToday => {
+            let today = chrono::Local::now().naive_local().date().and_hms_opt(0, 0, 0).unwrap();
+            app.expense_date = today;
+            app.expense_date_str = today.format("%Y-%m-%d").to_string();
+        }
+
+    }
 
     Command::none()
 }

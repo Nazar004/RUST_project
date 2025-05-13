@@ -18,7 +18,7 @@ pub fn render(app: &CombinedApp) -> Element<Message> {
         .push(
             TextInput::new("Password", &app.login_password)
                 .on_input(Message::LoginPasswordChanged)
-                .password(), // ← вот это добавляется
+                .password(),
         )
         .push(Button::new(IcedText::new("Login")).on_press(Message::LoginPressed))
         .push(IcedText::new(&app.login_message))

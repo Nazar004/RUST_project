@@ -5,21 +5,9 @@ use iced::{
 use iced::widget::canvas::{Frame, Path, Program, Geometry, Text as CanvasText};
 use iced::widget::canvas::path::Arc as CanvasArc;
 use iced::widget::Container;
-
-
-
 use std::collections::HashMap;
-// use std::f32::consts::PI;
-
 use crate::model::{CombinedApp, DashboardViewMode, Message};
 use crate::model::state::SortType;
-// Добавить в dashboard_view.rs
-
-
-
-
-
-
 struct BlackBackground;
 
 impl iced::widget::container::StyleSheet for BlackBackground {
@@ -119,27 +107,11 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
                 let sweep = pct * 2.0 * std::f32::consts::PI;
                 let end_angle = start_angle + sweep;
 
-                // let sx = center.x + outer_radius * start_angle.cos();
-                // let sy = center.y + outer_radius * start_angle.sin();
-
-                // let path = Path::new(|p| {
-                //     p.move_to(center);
-                //     p.line_to(Point::new(sx, sy));
-                //     p.arc(CanvasArc {
-                //         center,
-                //         radius: outer_radius,
-                //         start_angle,
-                //         end_angle,
-                //     });
-                //     p.close();
-                // });
                 let path = Path::new(|p| {
-                    // Внешняя дуга — от начала до конца
                     p.move_to(Point {
                         x: center.x + outer_radius * start_angle.cos(),
                         y: center.y + outer_radius * start_angle.sin(),
                     });
-                      // Линия от внешней к внутренней дуге
                     p.line_to(Point {
                         x: center.x + inner_radius * end_angle.cos(),
                         y: center.y + inner_radius * end_angle.sin(),
@@ -151,9 +123,6 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
                         end_angle,
                     });
 
-                  
-
-                    // Внутренняя дуга — от конца к началу, в обратную сторону
                     p.arc(CanvasArc {
                         center,
                         radius: inner_radius,
@@ -161,7 +130,7 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
                         end_angle: start_angle,
                     });
 
-                    p.close(); // замыкаем путь
+                    p.close();
                 });
 
 
@@ -178,7 +147,6 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
 
                 frame.fill(&path, color);
 
-                // Подписи
                 let mid_angle = start_angle + sweep / 2.0;
                 let tx = center.x + outer_radius * 0.65 * mid_angle.cos();
                 let ty = center.y + outer_radius * 0.65 * mid_angle.sin();
@@ -193,7 +161,6 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
                 start_angle = end_angle;
             }
 
-            // Очистим центр: белый круг
             let clear_center = Path::circle(center, inner_radius);
             frame.fill(&clear_center, Color::from_rgb(0.686, 0.933, 0.933));
 

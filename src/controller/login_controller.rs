@@ -38,19 +38,14 @@ pub async fn attempt_password_reset(
     new_password: &str,
 ) -> Result<(), String> {
     let mut conn = pool.get().map_err(|e| format!("DB error: {:?}", e))?;
-
-    // 1) найдем пользователя
     let user: User = users
         .filter(username.eq(username_str))
         .first(&mut conn)
         .map_err(|_| "User not found".to_string())?;
 
-    // 2) проверим секрет
     if user.secret_pass != secret_str {
         return Err("Wrong answer to secret question".into());
     }
-
-    // 3) захешируем новый пароль и обновим запись
     let hashed = hash(new_password, bcrypt::DEFAULT_COST)
         .map_err(|e| format!("Hash error: {:?}", e))?;
 

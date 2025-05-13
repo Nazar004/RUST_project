@@ -54,15 +54,10 @@ pub enum Message {
     CombinedLoaded((Vec<Transaction>, Vec<String>)),
     SortTypeChanged(SortType),
 
-DeleteTransaction(i32), // i32 = tran_id
-TransactionDeleted(Result<(), String>),
+    DeleteTransaction(i32),
+    TransactionDeleted(Result<(), String>),
 
 
-
-    // DateSelectedExpense(iced_aw::date_picker::Date),
-
-
-    // DateSelectedIncome(NaiveDateTime),
 
 
     ChangeExpenseDateString(String),
@@ -84,22 +79,18 @@ pub struct CombinedApp {
     pub user_id: Option<i32>,
     pub transactions: Vec<Transaction>,
     pub store_name: String,
-    // pub show_date_picker_expense: bool,
-    // pub show_date_picker_income: bool,
     pub expense_date: NaiveDateTime,
     pub expense_sum: String,
     pub income_source: String,
     pub income_date: NaiveDateTime,
     pub income_sum: String,
-    pub secret_pass: String,         // ответ на секретный вопрос
-    pub new_password: String,          // ввод нового пароля
+    pub secret_pass: String,     
+    pub new_password: String,       
     pub confirm_new_password: String,
     pub pool: DbPool,
-    // pub tx_list_state: iced::widget::scrollable::State,
     pub categories: Vec<String>,
     pub selected_category: Option<String>,
     pub sort_type: SortType,
-
     pub expense_date_str: String,
     pub income_date_str: String,
 
@@ -107,25 +98,20 @@ pub struct CombinedApp {
 }
 
 impl CombinedApp {
-    /// Обновляет транзакции и категории после успешного входа
     pub fn apply_login_result(&mut self, transactions: Vec<Transaction>, categories: Vec<String>) {
         self.transactions = transactions;
         self.categories = categories;
         self.current_screen = Screen::Dashboard(DashboardViewMode::Main);
     }
 
-    /// Очищает все поля формы расходов
     pub fn clear_expense_form(&mut self) {
         self.store_name.clear();
-        // self.expense_date.clear();
         self.expense_sum.clear();
         self.selected_category = None;
     }
 
-    /// Очищает все поля формы доходов
     pub fn clear_income_form(&mut self) {
         self.income_source.clear();
-        // self.income_date.clear();
         self.income_sum.clear();
     }
 }
@@ -148,12 +134,8 @@ impl Default for CombinedApp {
             new_password: String::new(),
             confirm_new_password: String::new(),
             user_id: None,
-            // tx_list_state: Default::default(),
             transactions: Vec::new(),
             store_name: String::new(),
-            // show_date_picker_expense: false,
-            // show_date_picker_income: false,
-
             expense_date: chrono::Local::now().naive_local(),
 
             income_date: chrono::Local::now().naive_local(),
