@@ -1,11 +1,11 @@
 // src/controller/transaction_controller.rs
-use diesel::prelude::*;
+use diesel::{prelude::*, r2d2};
 use diesel::r2d2::{Pool, ConnectionManager};
 use diesel::PgConnection;
 use diesel::result::Error as DieselError;
 use crate::schema::transactions::dsl::*;
 use crate::model::{Transaction, NewTransaction};
-
+use chrono::NaiveDateTime;
 /// Загрузить все транзакции пользователя
 pub fn load_transactions(
     pool: &Pool<ConnectionManager<PgConnection>>,
@@ -23,7 +23,7 @@ pub fn add_expense(
     pool: &Pool<ConnectionManager<PgConnection>>,
     uid: i32,
     source_str: &str,
-    date_str: &str,
+    date_str: NaiveDateTime,
     amount_val: f64,
     tag_id_val: Option<i32>,
 ) -> Result<(), DieselError> {
@@ -53,7 +53,7 @@ pub fn add_income(
     pool: &Pool<ConnectionManager<PgConnection>>,
     uid: i32,
     source_str: &str,
-    date_str: &str,
+    date_str: NaiveDateTime,
     amount_val: f64,
 ) -> Result<usize, DieselError> {
     let mut conn = pool.get().map_err(|_| DieselError::NotFound)?;
@@ -66,4 +66,17 @@ pub fn add_income(
             tran_amount.eq(amount_val),
         ))
         .execute(&mut conn)
+}
+
+
+pub fn delete_transaction(
+    pool: &r2d2::Pool<ConnectionManager<PgConnection>>,
+    tx_id: i32
+) -> Result<(), diesel::result::Error> {
+    let mut conn = match pool.get() {
+    Ok(c) => c,
+    Err(_) => return Err(diesel::result::Error::NotFound),
+};
+    diesel::delete(transactions.filter(tran_id.eq(tx_id))).execute(&mut conn)?;
+    Ok(())
 }
