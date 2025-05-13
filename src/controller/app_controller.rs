@@ -132,7 +132,8 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
         ConfirmAddExpense => {
                 if let Some(uid) = app.user_id {
                     let store = app.store_name.clone();
-                    let date = app.expense_date.clone();
+                    let date = chrono::Local::now().naive_local();
+
                     let amt = app.expense_sum.parse().unwrap_or(0.0);
                     let tag_id = app.categories.iter()
                         .position(|c| Some(c.clone()) == app.selected_category)
@@ -153,7 +154,7 @@ pub fn update(app: &mut CombinedApp, message: Message) -> Command<Message> {
         ConfirmAddIncome => {
                 if let Some(uid) = app.user_id {
                     let src = app.income_source.clone();
-                    let date = app.income_date.clone();
+                    let date = chrono::Local::now().naive_local();
                     let amt = app.income_sum.parse().unwrap_or(0.0);
                     let pool = app.pool.clone();
 

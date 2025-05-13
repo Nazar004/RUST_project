@@ -279,10 +279,20 @@ fn render_dashboard_main(app: &CombinedApp) -> Element<Message> {
 
     let mut sorted_transactions = app.transactions.clone();
     match app.sort_type {
-        SortType::NewestFirst => sorted_transactions.sort_by(|a, b| b.date.cmp(&a.date)),
-        SortType::OldestFirst => sorted_transactions.sort_by(|a, b| a.date.cmp(&b.date)),
-        SortType::OnlyIncome => sorted_transactions.retain(|t| t.tran_type.eq_ignore_ascii_case("income")),
-        SortType::OnlyExpense => sorted_transactions.retain(|t| t.tran_type.eq_ignore_ascii_case("expense")),
+            SortType::NewestFirst => {
+                sorted_transactions.sort_by(|a, b| b.date.cmp(&a.date));
+            }
+            SortType::OldestFirst => {
+                sorted_transactions.sort_by(|a, b| a.date.cmp(&b.date));
+            }
+            SortType::OnlyIncome => {
+                sorted_transactions.retain(|t| t.tran_type.eq_ignore_ascii_case("income"));
+                sorted_transactions.sort_by(|a, b| b.date.cmp(&a.date));
+            }
+            SortType::OnlyExpense => {
+                sorted_transactions.retain(|t| t.tran_type.eq_ignore_ascii_case("expense"));
+                sorted_transactions.sort_by(|a, b| b.date.cmp(&a.date));
+            }
     }
 
     for tx in &sorted_transactions {
